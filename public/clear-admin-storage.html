@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Admin Storage - Bali Explorer</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #dc2626;
+        }
+        .success {
+            background: #10b981;
+        }
+        .success:hover {
+            background: #059669;
+        }
+        .info {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            color: #374151;
+            border-left: 4px solid #3b82f6;
+        }
+        .code {
+            font-family: monospace;
+            background: #1f2937;
+            color: #10b981;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .card-list {
+            margin-top: 20px;
+        }
+        .card-item {
+            background: #f9fafb;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-info {
+            flex: 1;
+        }
+        .card-title {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+        .card-meta {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-unverified {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-flagged {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Управление данными админки</h1>
+        
+        <div class="info">
+            <strong>Что можно сделать:</strong>
+            <ul>
+                <li>Посмотреть все карточки в localStorage</li>
+                <li>Удалить конкретные карточки</li>
+                <li>Очистить все карточки сразу</li>
+            </ul>
+        </div>
+
+        <div id="status"></div>
+
+        <div>
+            <button class="success" onclick="loadCards()">🔄 Обновить список</button>
+            <button onclick="clearAll()">🗑️ Удалить все карточки</button>
+        </div>
+
+        <div id="cardList" class="card-list"></div>
+    </div>
+
+    <script>
+        function loadCards() {
+            try {
+                const data = localStorage.getItem('bali_entities');
+                const cards = data ? JSON.parse(data) : [];
+                
+                const listEl = document.getElementById('cardList');
+                const statusEl = document.getElementById('status');
+                
+                statusEl.innerHTML = `
+                    <div class="info">
+                        📊 <strong>Карточек в localStorage:</strong> ${cards.length}
+                    </div>
+                `;
+                
+                if (cards.length === 0) {
+                    listEl.innerHTML = '<div class="info">✅ localStorage пуст</div>';
+                    return;
+                }
+                
+                listEl.innerHTML = cards.map((card, index) => {
+                    const statusClass = `status-${card.status || 'unverified'}`;
+                    const statusText = card.status || 'unverified';
+                    
+                    return `
+                        <div class="card-item">
+                            <div class="card-info">
+                                <div class="card-title">
+                                    ${card.title || 'Без названия'}
+                                    <span class="status-badge ${statusClass}">${statusText}</span>
+                                </div>
+                                <div class="card-meta">
+                                    ID: ${card.id} | 
+                                    Type: ${card.type || 'place'} | 
+                                    Rating: ${card.totalScore || card.rating || 'N/A'}
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn-small success" onclick="viewCard('${card.id}')">👁️ Просмотр</button>
+                                <button class="btn-small" onclick="deleteCard('${card.id}')">🗑️ Удалить</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="info" style="border-left-color: #ef4444; background: #fee2e2; color: #991b1b;">
+                        ❌ <strong>Ошибка:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function deleteCard(cardId) {
+            if (!confirm(`Удалить карточку ${cardId}?`)) return;
+            
+            try {
+                const data = localStorage.getItem('bali_entities');
+                let cards = data ? JSON.parse(data) : [];
+                
+                cards = cards.filter(c => c.id !== cardId);
+                
+                localStorage.setItem('bali_entities', JSON.stringify(cards));
+                
+                loadCards();
+                
+                document.getElementById('status').innerHTML = `
+                    <div class="info" style="border-left-color: #10b981; background: #d1fae5; color: #065f46;">
+                        ✅ Карточка удалена!
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="info" style="border-left-color: #ef4444; background: #fee2e2; color: #991b1b;">
+                        ❌ <strong>Ошибка:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function viewCard(cardId) {
+            window.open(`/entity/${cardId}`, '_blank');
+        }
+
+        function clearAll() {
+            if (!confirm('⚠️ Удалить ВСЕ карточки из localStorage? Это действие нельзя отменить!')) return;
+            
+            try {
+                localStorage.removeItem('bali_entities');
+                
+                loadCards();
+                
+                document.getElementById('status').innerHTML = `
+                    <div class="info" style="border-left-color: #10b981; background: #d1fae5; color: #065f46;">
+                        ✅ <strong>Успешно!</strong><br>
+                        Все карточки удалены из localStorage.
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="info" style="border-left-color: #ef4444; background: #fee2e2; color: #991b1b;">
+                        ❌ <strong>Ошибка:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-load on page load
+        window.onload = loadCards;
+    </script>
+</body>
+</html>
